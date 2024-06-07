@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<style>
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    background-color: #f0f0f0;
+}
+
+.logged-in {
+    display: none;
+}
+
+#login-section {
+    max-width: 500px;
+    min-width: 300px;
+    margin: 13% auto;
+}
+
+.login-input {
+    margin-top: 10px;
+    width: 100%;
+    min-height: 2em;
+    border: 2px solid #ccc;
+    border-radius: 5px;
+}
+
+.login-label {
+    display: block;
+    margin: 10px 0;
+}
+
+#login-button {
+    margin-left: 35%;
+    margin-top: 20px;
+    padding: 10px 20px;
+}
+
+.button {
+    padding: 10px 20px;
+    background-color: #0091FE;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.3s;
+    margin-right: 5px;
+}
+
+.button:hover {
+    background-color: #0099FF;
+}
+
+.window {
+    padding: 20px;
+    background-color: white;
+    border: 2px solid #ccc;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    border-radius: 5px;
+    margin: 5px;
+}
+
+#param {
+    font-weight: bold;
+}
+
+#logout-button {
+    margin-top: 5px;
+    margin-left: 5px;
+}
+
+</style>
+
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Cloud</title>
+    </head>
+    <body>
+        <section id="login-section" class="logged-out window">
+            <h2>Login</h2>
+            <label for="username" id="username-label" class="login-label"> User <input type="text" id="username" class="login-input" name="username" placeholder="Enter your username" required ></label>
+            <label for="password" id="password-label" class="login-label"> Password <input type="password" id="password" class="login-input" name="password" placeholder="Enter your password" required ></label>
+            <input id="login-button" class="button" type="submit" value="Sign in" onClick="login()">
+            <input id="register-button" class="button" type="submit" value="Sign up" onClick="register()">
+        </section>
+    
+        <section id="logged-in-section" class="logged-in">
+            <input id="logout-button" class="button" type="submit" value="Logout" onclick="logout()">
+            <div id="creation" class="window">
+                <h2>VM Creation</h2>
+                <label for="name" id="name-label" class="login-label"> Name <input type="text" id="name" class="login-input" name="name" placeholder="Enter vm name" required ></label>
+                <label for="memory" id="memory-label" class="login-label"> Memory <input type="text" id="memory" class="login-input" name="memory" placeholder="Enter memory value" required ></label>
+                <label for="cpu" id="cpu-label" class="login-label"> CPU Cores <input type="text" id="cpu" class="login-input" name="cpu" placeholder="Enter cpu cores value" required ></label>
+                <input id="create-vm-button" class="button" type="submit" value="Create VM"  onclick="createVM()">
+            </div>
+
+            <div id="vms" class="window"></div>
+
+            <div id="hosts" class="window"></div>
+
+            <div id="users" class="window"></div>
+        </section>
+
+    </body>
+</html>
+
+<script>
+let currentUsername;
+let currentPassword;
+
+function logout() {
+    const loggedOut = document.querySelector('.logged-out');
+    const loggedIn = document.querySelector('.logged-in');
+    loggedOut.style.display = 'block';
+    loggedIn.style.display = 'none';
+}
+
+async function login() {
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+
+    const data = { username: username, password: password };
+
+    const response = await fetch('login', {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+    });
+
+    if (response.ok) {
+        const loggedOut = document.querySelector('.logged-out');
+        const loggedIn = document.querySelector('.logged-in');
+        loggedOut.style.display = 'none';
+        loggedIn.style.display = 'block';
+        currentUsername = username;
+        currentPassword = password;
+
+        buildVmView();
+        buildUserView();
+    } else {
+        window.alert("Login failed");
+    }
+
+}
+
+async function register() {
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+
+    const data = { username: username, password: password };
+
+    const response = await fetch('register', {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+    });
+
+    if (response.ok) {
+        const loggedOut = document.querySelector('.logged-out');
+        const loggedIn = document.querySelector('.logged-in');
+        loggedOut.style.display = 'none';
+        loggedIn.style.display = 'block';
+        currentUsername = username;
+        currentPassword = password;
+
+        buildVmView();
+        buildUserView();
+    } else {
+        window.alert("Register failed");
+    }
+
+
+}
+
+async function createVM() {
+    const name = document.getElementById('name').value;
+    const memory = document.getElementById('memory').value;
+    const cpu = document.getElementById('cpu').value;
+    
+    const data = { name: name, memory: memory, cpu: cpu, username: currentUsername, password: currentPassword };
+    const response = await fetch('create', {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+    });
+    if (response.ok) {
+        window.alert("VM created");
+
+        buildVmView();
+    } else {
+        window.alert("VM creation failed");
+    }
+}
+
+async function getVMs() {
+    const data = { username: currentUsername, password: currentPassword };
+
+    const response = await fetch('vms', {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+    });
+    if (response.ok) {
+        buildHostView();
+        return response.json();
+    } else {
+        throw new Error("error");
+    }
+}
+
+function buildVmView() {
+    const vms = document.getElementById('vms');
+    vms.innerHTML = "<h2>VM List</h2>"
+
+    getVMs().then(data => {
+        let i = 0;
+        let line = "";
+        while (data[i] !== '\n') {
+            line += data[i];
+            i++;
+        }
+        vms.innerHTML += '<p id="param">' + line + '</p>';
+        i++;
+        line = "";
+        for (; i < data.length; i++) {
+            if (data[i] === '\n') {
+                vms.innerHTML += '<p>' + line + '</p>';
+                id = "";
+                for (let j = 0; j < line.length; j++) {
+                    if (line[j] === ' ' && id.length > 0) {
+                        break;
+                    }
+                    if (line[j] !== ' ') {
+                        id += line[j];
+                    }
+                }
+                vms.innerHTML += '<input class="button" type="submit" value="Turn on"  onclick="turnOn(' + id + ')">'; 
+                vms.innerHTML += '<input class="button" type="submit" value="Turn off"  onclick="turnOff(' + id + ')">'; 
+                vms.innerHTML += '<input class="button" type="submit" value="Delete"  onclick="deleteVM(' + id + ')">'; 
+                line = "";
+            } else {
+                line += data[i];
+            }
+        }
+    }).catch(reason => window.alert(reason));
+}
+
+async function turnOn(id) {
+    const data = { id: id };
+
+    const response = await fetch('poweron', {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+    });
+    if (response.ok) {
+        window.alert("VM power on success");
+        buildVmView();
+    } else {
+        window.alert("failed");
+    }
+}
+
+async function turnOff(id) {
+    const data = { id: id };
+
+    const response = await fetch('poweroff', {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+    });
+    if (response.ok) {
+        window.alert("VM power off success");
+        buildVmView();
+    } else {
+        window.alert("failed");
+    }
+}
+
+async function deleteVM(id) {
+    const data = { id: id };
+
+    const response = await fetch('delete', {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+    });
+    if (response.ok) {
+        window.alert("VM deleted");
+        buildVmView();
+    } else {
+        window.alert("failed");
+    }
+}
+
+async function getHosts() {
+    const data = { username: currentUsername, password: currentPassword };
+
+    const response = await fetch('hosts', {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+    });
+    if (response.ok) {
+        return response.json();
+    } else {
+        throw new Error("error");
+    }
+}
+
+function buildHostView() {
+    const hosts = document.getElementById('hosts');
+    hosts.innerHTML = "";
+    
+    getHosts().then(data => {
+        hosts.innerHTML = "<h2>Host Information</h2>";
+        let i = 0;
+        let line = "";
+        while (data[i] !== '\n') {
+            line += data[i];
+            i++;
+        }
+        hosts.innerHTML += '<p id="param">' + line + '</p>';
+        i++;
+        line = "";
+        for (; i < data.length; i++) {
+            if (data[i] === '\n') {
+                hosts.innerHTML += '<p>' + line + '</p>';
+                line = "";
+            } else {
+                line += data[i];
+            }
+        }
+    });
+}
+
+async function getUsers() {
+    const data = { username: currentUsername, password: currentPassword };
+
+    const response = await fetch('users', {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+    });
+    if (response.ok) {
+        return response.json();
+    } else {
+        throw new Error("error");
+    }
+}
+
+function buildUserView() {
+    const users = document.getElementById('users');
+    users.innerHTML = "";
+
+    getUsers().then(data => {
+        users.innerHTML = "<h2>User Information</h2>";
+        let i = 0;
+        let line = "";
+        while (data[i] !== '\n') {
+            line += data[i];
+            i++;
+        }
+        users.innerHTML += '<p id="param">' + line + '</p>';
+        i++;
+        line = "";
+        for (; i < data.length; i++) {
+            if (data[i] === '\n') {
+                users.innerHTML += '<p>' + line + '</p>';
+                id = "";
+                for (let j = 0; j < line.length; j++) {
+                    if (line[j] === ' ' && id.length > 0) {
+                        break;
+                    }
+                    if (line[j] !== ' ') {
+                        id += line[j];
+                    }
+                }
+                users.innerHTML += '<input class="button" type="submit" value="Delete"  onclick="deleteUser(' + id + ')">'; 
+                line = "";
+            } else {
+                line += data[i];
+            }
+        }
+    });
+}
+
+async function deleteUser(id) {
+    const data = { id: id };
+
+    const response = await fetch('deleteuser', {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+    });
+    if (response.ok) {
+        window.alert("User deleted");
+        buildUserView();
+    } else {
+        window.alert("failed");
+    }
+}
+
+</script>
